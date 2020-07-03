@@ -1,28 +1,26 @@
-const HtmlWebpackPlugin = require('html-webpack-plugin'); //通过 npm 安装
 const webpack = require('webpack'); //访问内置的插件
 const path = require('path');
 const UglifyJSPlugin = require('uglifyjs-webpack-plugin'); //压缩js
-const MiniCssExtractPlugin = require('mini-css-extract-plugin'); // 抽离css
 const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin') //压缩css
-const delDir = require('./dellDir')
-const ExtractTextPlugin = require('extract-text-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin'); // 单独打包css
 
+const {resolve, delDir, outDir, entry, myHtmlWebpackPlugin, myCssPlugin} = require('./webpack.config/utils')
+const rules = require('./webpack.config/rules')
+const { Console } = require('console');
+// import Lodash from 'lodash'
+const time=new Date().getTime();
 
-
-function resolve(dir) {
-  return path.join(__dirname, dir)
-}
-
-const outDir = resolve('dist')
 delDir(outDir)
-
 const config = {
   context: path.resolve(__dirname),
-  entry: resolve('src/index.js'),
+  entry: entry('./src/js/**/*.js', 'js'),
   mode: 'production',
   output: {
-    filename: '[name].[hash].bundle.js',
-    path: outDir + '/js/'
+    filename: 'js/[name]/[name].bundle.js',
+    path: outDir,
+    chunkFilename: '[name].[hash].js',
+    publicPath: '/dist/'
+    // publicPath: process.env.NODE_ENV === 'development' ? '../../' : '../../'
   },
   // 模块路径解析相关的配置都在 resolve 字段下
   resolve: {
@@ -36,43 +34,40 @@ const config = {
     // 默认寻找的文件名
     mainFiles: ['index'],
   },
+  devServer: {
+    contentBase: resolve('/dist/pages/'), // 服务的内容目录
+    port: 4396, // 搭建在本地的服务的端口号
+    compress: true, // 服务开启gzip压缩
+    // open: true,
+    // publicPath: '../',
+		host: "127.0.0.1",
+		overlay: true,
+    proxy: {
+        '/api': {
+            target: 'http://localhost:3000',
+        }, 
+        '/': {
+          bypass: function(req, res, proxyOptions) {
+            const path = req.url
+            console.log(path, process.env.NODE_ENV)
+            if(path === '/'){
+              return  'home/home.html';
+            } 
+          }
+        }
+    }
+  },
   module: {
     // 忽略webpack要编译的文件 如jquery
     noParse(content) {
       return /noParse/.test(content)
     },
-    rules: [
-      {
-        test: /\.(js|jsx)$/,
-        include: [resolve('src')],
-        use: {
-          loader: 'babel-loader',
-          
-        },
-      },
-      // {
-      //   test: /\.css$/,
-      //   // 因为这个插件需要干涉模块转换的内容，所以需要使用它对应的 loader
-      //   use: ExtractTextPlugin.extract({ 
-      //     fallback: 'style-loader',
-      //     use: 'css-loader'
-      //   }), 
-      // },
-      {
-        test: /\.css$/,
-        include: [resolve('src')],
-        use: [
-          {
-            loader: MiniCssExtractPlugin.loader,
-            options: {
-              publicPath: path.resolve(__dirname,'dist')
-            }
-          },
-          "css-loader"
-        ]
-      } 
-
-    ]
+    rules,
+  },
+  performance: {
+    hints: false,
+    maxEntrypointSize: 512000,
+    maxAssetSize: 512000
   },
   plugins: [
     // new ExtractTextPlugin({
@@ -82,10 +77,11 @@ const config = {
     //   allChunks: true
     // }),
     new MiniCssExtractPlugin({ // 替代上面的 ExtractTextPlugin
-      filename: "[name].css",
-      chunkFilename: "[name].css",
+      filename: "css/[name].css",
+      chunkFilename: "css/[name][hash].css",
       allChunks: false
     }),
+    // ...myCssPlugin(),
     new UglifyJSPlugin({
       test: /\.js($|\?)/i, //指定文件格式
       include: /\.\/src/, //指定目录
@@ -107,21 +103,11 @@ const config = {
         }
       }
     }),
-    new HtmlWebpackPlugin({
-      filename: resolve('dist/index.html'), //目标位置
-      template: './index.html',
-      inject: true,
-      title: 'hello-webpack',
-      minify: {
-        removeComments: true, //去掉注释
-        collapseWhitespace: true, //去掉空行
-        removeAttributeQuotes: true
-        // more options:
-        // https://github.com/kangax/html-minifier#options-quick-reference
-      }
-    }),
+    ...myHtmlWebpackPlugin()
   ],
   optimization: {
+    // runtimeChunk: true,
+
     minimizer: [new OptimizeCSSAssetsPlugin({
       assetNameRegExp: /\.css\.*(?!.*map)/g,  //注意不要写成 /\.css$/g
       cssProcessor: require('cssnano'),
@@ -138,18 +124,52 @@ const config = {
       canPrint: true
     })],
     splitChunks: {
+      // chunks: 'async',
+      // minSize: 30000,
+      // // minRemainingSize: 0,
+      // maxSize: 0,
+      // minChunks: 1,
+      // maxAsyncRequests: 6,
+      // maxInitialRequests: 4,
+      // automaticNameDelimiter: '~',
       cacheGroups: {
         styles: {
-          name: '../css/style',
+          name: 'common/' + time,
           test: /\.css$/,
           chunks: 'all',
           enforce: true,
+          minSize: 0, // 只要超出0字节就生成一个新包
+          minChunks: 2
         },
+        vendor: { // 抽离第三方插件
+          test: /node_modules/, // 指定是node_modules下的第三方包
+          chunks: 'initial',
+          name: 'vendor', // 打包后的文件名，任意命名    
+          // 设置优先级，防止和自定义的公共代码提取时被覆盖，不进行打包
+          priority: 10
+        },
+        
+        common: { // 抽离自己写的公共代码，common这个名字可以随意起
+          chunks: 'initial',
+          name: 'common', // 任意命名
+          minSize: 0, // 只要超出0字节就生成一个新包
+          minChunks: 2
+        },
+        default: {
+          minChunks: 2,
+          priority: -20,
+          reuseExistingChunk: true
+        }
       }
     }
   }
 
 };
+
+
+
+
+
 webpack(config, (err, stats) => {
   console.log('启用webpack!')
 })

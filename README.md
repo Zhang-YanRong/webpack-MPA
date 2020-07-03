@@ -42,6 +42,63 @@
   }),
 ```
 
->* 方法2:
+>* 方法2: (推荐)
 
-  * 安装 
+  * 安装 optimize-css-assets-webpack-plugin
+  * 用法
+```bash
+  const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin')
+
+  rules: [
+    {
+      test: /\.css$/,
+      include: [resolve('src')],
+      use: [
+        {
+          loader: MiniCssExtractPlugin.loader,
+          options: {
+            publicPath: path.resolve(__dirname,'dist')
+          }
+        },
+        "css-loader"
+      ]
+    }
+  ]
+
+  plugins: [
+    new MiniCssExtractPlugin({ // 替代上面的 ExtractTextPlugin
+      filename: "[name].css",
+      chunkFilename: "[name].css",
+      allChunks: false
+    }),
+  ]
+
+  optimization: {
+    minimizer: [new OptimizeCSSAssetsPlugin({
+      assetNameRegExp: /\.css\.*(?!.*map)/g,  //注意不要写成 /\.css$/g
+      cssProcessor: require('cssnano'),
+      cssProcessorOptions: {
+        discardComments: { removeAll: true },
+        // 避免 cssnano 重新计算 z-index
+        safe: true,
+        // cssnano 集成了autoprefixer的功能
+        // 会使用到autoprefixer进行无关前缀的清理
+        // 关闭autoprefixer功能
+        // 使用postcss的autoprefixer功能
+        autoprefixer: false
+      },
+      canPrint: true
+    })],
+    splitChunks: {
+      cacheGroups: {
+        styles: {
+          name: '../css/style',
+          test: /\.css$/,
+          chunks: 'all',
+          enforce: true,
+        },
+      }
+    }
+  }
+
+```
