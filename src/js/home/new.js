@@ -6,7 +6,7 @@ console.log('new.js')
 import '../../css/about/test.css'
 alert(1)
 window.οnlοad=function(){
-  alert(1)
+  alert('new')
 }
 export default {
   a: 'yesOOl'

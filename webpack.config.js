@@ -3,7 +3,7 @@ const path = require('path');
 const UglifyJSPlugin = require('uglifyjs-webpack-plugin'); //压缩js
 const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin') //压缩css
 const MiniCssExtractPlugin = require('mini-css-extract-plugin'); // 单独打包css
-
+// const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin
 const {resolve, delDir, outDir, entry, myHtmlWebpackPlugin, myCssPlugin} = require('./webpack.config/utils')
 const rules = require('./webpack.config/rules')
 const { Console } = require('console');
@@ -38,8 +38,8 @@ const config = {
     contentBase: resolve('/dist/pages/'), // 服务的内容目录
     port: 4396, // 搭建在本地的服务的端口号
     compress: true, // 服务开启gzip压缩
-    // open: true,
-    // publicPath: '../',
+    open: true,
+    publicPath: '/dist/',
 		host: "127.0.0.1",
 		overlay: true,
     proxy: {
@@ -103,7 +103,9 @@ const config = {
         }
       }
     }),
-    ...myHtmlWebpackPlugin()
+    ...myHtmlWebpackPlugin(),
+
+    // new BundleAnalyzerPlugin()
   ],
   optimization: {
     // runtimeChunk: true,
@@ -124,14 +126,14 @@ const config = {
       canPrint: true
     })],
     splitChunks: {
-      // chunks: 'async',
-      // minSize: 30000,
-      // // minRemainingSize: 0,
-      // maxSize: 0,
-      // minChunks: 1,
-      // maxAsyncRequests: 6,
-      // maxInitialRequests: 4,
-      // automaticNameDelimiter: '~',
+      chunks: 'all',
+      minSize: 30,
+      // minRemainingSize: 0,
+      maxSize: 0,
+      minChunks: 1,
+      maxAsyncRequests: 6,
+      maxInitialRequests: 4,
+      automaticNameDelimiter: '~',
       cacheGroups: {
         styles: {
           name: 'common/' + time,
@@ -143,14 +145,13 @@ const config = {
         },
         vendor: { // 抽离第三方插件
           test: /node_modules/, // 指定是node_modules下的第三方包
-          chunks: 'initial',
+          chunks: 'async',
           name: 'vendor', // 打包后的文件名，任意命名    
           // 设置优先级，防止和自定义的公共代码提取时被覆盖，不进行打包
           priority: 10
         },
-        
         common: { // 抽离自己写的公共代码，common这个名字可以随意起
-          chunks: 'initial',
+          chunks: 'all',
           name: 'common', // 任意命名
           minSize: 0, // 只要超出0字节就生成一个新包
           minChunks: 2

@@ -28,12 +28,13 @@ const delDir = (path) => {
 
 // 遍历使用 html-webpack-plugin
 const myHtmlWebpackPlugin = () => {
-  const time=new Date().getTime();
+  
   let arr = []
   const entryObj = entry('./src/pages/**/*.html', 'pages')
   const keyArr = Object.keys(entryObj)
   keyArr.forEach(item => {
     entryObj[item].forEach( v => {
+      const time=new Date().getTime();
       const fileName = v.replace('./src/','')
       arr.push(
         new HtmlWebpackPlugin({
@@ -41,8 +42,10 @@ const myHtmlWebpackPlugin = () => {
           template: v,
           inject: true, //script标签位于html文件的 body 底部
           hash: true,
-          chunks: ['vendor', 'common', item],
+          chunks: ['common',item],
           minify: {
+            minifyCSS: true, // 压缩 HTML 中出现的 CSS 代码
+            minifyJS: true, // 压缩 HTML 中出现的 JS 代码
             removeComments: true, //移除HTML中的注释
             collapseWhitespace: true, //折叠空白区域 也就是压缩代码
             removeAttributeQuotes: true,

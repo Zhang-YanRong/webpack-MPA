@@ -5,10 +5,12 @@ function about(params) {
     console.log(element)
   }
 }
-window.οnlοad=function(){
+window.onload=function(){
   about()
   alert(1)
 }
+alert(1)
+
 
 window.test = function(){
   console.log("home js")
